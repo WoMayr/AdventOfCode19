@@ -1,5 +1,5 @@
 import rawInput from "./input";
-import { output } from "./pageObjects";
+import { output, run } from "./pageObjects";
 
 function main() {
     const input = rawInput
@@ -11,4 +11,4 @@ function main() {
     output.textContent = "Hello world";
 }
 
-main();
+run.addEventListener("click", () => main());

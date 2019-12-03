@@ -1,6 +1,13 @@
 import rawInput from "./input";
 import { output, run } from "./pageObjects";
 
+enum Opcodes {
+    Add = 1,
+    Multiply = 2,
+
+    Halt = 99
+}
+
 class InvalidOpcodeError extends Error {
     constructor(public opcode: number, public position: number, public memory: number[]) {
         super(`Invalid opcode at position ${position}. Memory dump: ${memory.join(", ")}`);
@@ -16,17 +23,17 @@ function runCalculation(noun: number, verb: number, memory: number[]): number {
     while (true) {
         const opcode = memory[pos];
 
-        if (opcode === 1) {
+        if (opcode === Opcodes.Add) {
             const posA = memory[pos + 1];
             const posB = memory[pos + 2];
             const target = memory[pos + 3];
             memory[target] = memory[posA] + memory[posB];
-        } else if (opcode === 2) {
+        } else if (opcode === Opcodes.Multiply) {
             const posA = memory[pos + 1];
             const posB = memory[pos + 2];
             const target = memory[pos + 3];
             memory[target] = memory[posA] * memory[posB];
-        } else if (opcode === 99) {
+        } else if (opcode === Opcodes.Halt) {
             return memory[0];
         } else {
             throw new InvalidOpcodeError(opcode, pos, memory);
