@@ -7,18 +7,13 @@ function main() {
         .split(',')
         .map(x => +x)
 
-    const backupMemory = [...input];
-    const targetValue = 19690720;
-
     // Code here
-    // let noun = 12, verb = 2;
-    // const interpreter = new IntCodeInterpreter([...backupMemory]);
-    // interpreter.memory[1] = noun;
-    // interpreter.memory[2] = verb;
     try {
-        const interpreter = new IntCodeInterpreter([1,9,10,3,2,3,11,0,99,30,40,50]);
+        const interpreter = new IntCodeInterpreter([...input]);
+        interpreter.addInput(1);
+        interpreter.addOutputListener(out => console.log(out));
         interpreter.run();
-        output.textContent = interpreter.memory[0].toString();
+        output.textContent = interpreter.outputs[interpreter.outputs.length - 1].toString();
     } catch (e) {
         if (e instanceof IntCodeInterpreterError) {
             console.error(e.message);

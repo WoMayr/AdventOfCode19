@@ -1,6 +1,8 @@
 export enum Opcodes {
     Add = 1,
     Multiply = 2,
+    Input = 3,
+    Output = 4,
 
     Halt = 99,
 }
@@ -36,13 +38,16 @@ export class IntCodeInterpreter {
     private readonly instructions: InstructionMap = {
         [Opcodes.Add]: { parameters: 3, run: this.opcodeAdd.bind(this) },
         [Opcodes.Multiply]: { parameters: 3, run: this.opcodeMultiply.bind(this) },
+        [Opcodes.Input]: { parameters: 1, run: this.opcodeInput.bind(this) },
+        [Opcodes.Output]: { parameters: 1, run: this.opcodeOutput.bind(this) },
 
         [Opcodes.Halt]: { parameters: 0, run: this.opcodeHalt.bind(this) },
     }
 
     private instructionPointer = 0;
-    private input = [];
+    private input: number[] = [];
     private outputListeners: ((output: number) => void)[] = [];
+    outputs: number[] = [];
 
     private running = false;
     private errorMessage: string;
@@ -65,6 +70,9 @@ export class IntCodeInterpreter {
         this.running = true;
 
         while (this.running) {
+            if (this.instructionPointer < 0 || this.instructionPointer >= this.memory.length) {
+                this.onError("Instruction pointer outside legal range!");
+            }
             const [opcode, parameterModes] = this.readOpCode();
             const instruction = this.instructions[opcode];
 
@@ -127,22 +135,37 @@ export class IntCodeInterpreter {
         this.setMemory(targetIdx, value);
     }
 
-    private opcodeAdd(paramterModes: ParameterMode[]) {
-        const a = this.getParameter(0, paramterModes[0]);
-        const b = this.getParameter(1, paramterModes[1]);
+    private opcodeAdd(parameterModes: ParameterMode[]) {
+        const a = this.getParameter(0, parameterModes[0]);
+        const b = this.getParameter(1, parameterModes[1]);
 
         this.writeToParameter(2, a + b);
     }
 
-    private opcodeMultiply(paramterModes: ParameterMode[]) {
-        const a = this.getParameter(0, paramterModes[0]);
-        const b = this.getParameter(1, paramterModes[1]);
+    private opcodeMultiply(parameterModes: ParameterMode[]) {
+        const a = this.getParameter(0, parameterModes[0]);
+        const b = this.getParameter(1, parameterModes[1]);
 
         this.writeToParameter(2, a * b);
     }
 
     private opcodeHalt() {
         this.running = false;
+    }
+
+    private opcodeInput(parameterModes: ParameterMode[]) {
+        const value = this.input.pop();
+
+        this.writeToParameter(0, value);
+    }
+
+    private opcodeOutput(parameterModes: ParameterMode[]) {
+        const value = this.getParameter(0, parameterModes[0]);
+
+        this.outputListeners.forEach(listener => {
+            listener(value);
+        });
+        this.outputs.push(value);
     }
 
     private onError(message?: string) {
