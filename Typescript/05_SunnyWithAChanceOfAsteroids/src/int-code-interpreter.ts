@@ -3,6 +3,10 @@ export enum Opcodes {
     Multiply = 2,
     Input = 3,
     Output = 4,
+    JumpIfTrue = 5,
+    JumpIfFalse = 6,
+    LessThan = 7,
+    Equals = 8,
 
     Halt = 99,
 }
@@ -14,6 +18,7 @@ export enum ParameterMode {
 
 interface InstructionDescription {
     parameters: number;
+    skipJump?: boolean;
     run: (parameterModes: ParameterMode[]) => void;
 }
 interface InstructionMap {
@@ -40,6 +45,10 @@ export class IntCodeInterpreter {
         [Opcodes.Multiply]: { parameters: 3, run: this.opcodeMultiply.bind(this) },
         [Opcodes.Input]: { parameters: 1, run: this.opcodeInput.bind(this) },
         [Opcodes.Output]: { parameters: 1, run: this.opcodeOutput.bind(this) },
+        [Opcodes.JumpIfTrue]: { parameters: 2, run: this.opcodeJumpIfTrue.bind(this) },
+        [Opcodes.JumpIfFalse]: { parameters: 2, run: this.opcodeJumpIfFalse.bind(this) },
+        [Opcodes.LessThan]: { parameters: 3, run: this.opcodeLessThan.bind(this) },
+        [Opcodes.Equals]: { parameters: 3, run: this.opcodeEquals.bind(this) },
 
         [Opcodes.Halt]: { parameters: 0, run: this.opcodeHalt.bind(this) },
     }
@@ -76,9 +85,12 @@ export class IntCodeInterpreter {
             const [opcode, parameterModes] = this.readOpCode();
             const instruction = this.instructions[opcode];
 
+            let backIP = this.instructionPointer;
             instruction.run(parameterModes);
 
-            this.instructionPointer += instruction.parameters + 1;
+            if (!instruction.skipJump && backIP === this.instructionPointer) {
+                this.instructionPointer += instruction.parameters + 1;
+            }
         }
     }
 
@@ -166,6 +178,35 @@ export class IntCodeInterpreter {
             listener(value);
         });
         this.outputs.push(value);
+    }
+
+    private opcodeJumpIfTrue(parameterModes: ParameterMode[]) {
+        const a = this.getParameter(0, parameterModes[0]);
+        const target = this.getParameter(1, parameterModes[1]);
+
+        if (a !== 0) {
+            this.instructionPointer = target;
+        }
+    }
+    private opcodeJumpIfFalse(parameterModes: ParameterMode[]) {
+        const a = this.getParameter(0, parameterModes[0]);
+        const target = this.getParameter(1, parameterModes[1]);
+
+        if (a === 0) {
+            this.instructionPointer = target;
+        }
+    }
+    private opcodeLessThan(parameterModes: ParameterMode[]) {
+        const a = this.getParameter(0, parameterModes[0]);
+        const b = this.getParameter(1, parameterModes[1]);
+
+        this.writeToParameter(2, (a < b) ? 1 : 0);
+    }
+    private opcodeEquals(parameterModes: ParameterMode[]) {
+        const a = this.getParameter(0, parameterModes[0]);
+        const b = this.getParameter(1, parameterModes[1]);
+
+        this.writeToParameter(2, (a === b) ? 1 : 0);
     }
 
     private onError(message?: string) {
