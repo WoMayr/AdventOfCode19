@@ -179,7 +179,7 @@ export class IntCodeInterpreter {
             return;
         }
         this.suspended = false;
-        const value = this.input.pop();
+        const value = this.input.shift();
 
         this.writeToParameter(0, value);
     }

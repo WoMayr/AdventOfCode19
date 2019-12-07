@@ -16,42 +16,29 @@ function main() {
     let max = -1;
     let bestPermutation: number[] = undefined;
 
+    output.textContent = "";
+
     // Code here
     for (const permutation of phasePermutations) {
-        let result = -1;
         try {
-            const interpreters: IntCodeInterpreter[] = new Array(5);
+            let amplifierInput = 0;
             // Initilize IntCode machines and set phase setting
             for (let i = 0; i < 5; i++) {
                 const interpreter = new IntCodeInterpreter([...input]);
                 interpreter.addInput(permutation[i]);
+                interpreter.addInput(amplifierInput);
 
-                if (i < 4) {
-                    interpreter.addOutputListener(output => interpreters[i + 1].addInput(output));
-                } else {
-                    interpreter.addOutputListener(output => result = output);
-                }
-                interpreters[i] = interpreter;
+                interpreter.addOutputListener(output => {
+                    amplifierInput = output;
+                    // interpreter.running = false;
+                });
+
+                interpreter.run();
             }
 
-            // initialize first amplifier
-            interpreters[0].addInput(0);
-
-            while (interpreters.some(i => !i.hasHalted)) {
-                for (const interpreter of interpreters) {
-                    if (!interpreter.hasHalted) {
-                        interpreter.step();
-                    }
-                }
-
-                if (interpreters.every(x => x.suspended)) {
-                    throw new Error("All interpreters are suspended!");
-                }
-            }
-
-            output.textContent += `[${permutation.join(", ")}]: ${result}\r\n`;
-            if (result > max) {
-                max = result;
+            output.textContent += `[${permutation.join(", ")}]: ${amplifierInput}\r\n`;
+            if (amplifierInput > max) {
+                max = amplifierInput;
                 bestPermutation = permutation;
             }
         } catch (e) {
