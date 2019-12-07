@@ -11,7 +11,8 @@ function main() {
         .split(',')
         .map(x => +x)
 
-    const phasePermutations = permutator([0,1,2,3,4]);
+    // const phasePermutations = permutator([0,1,2,3,4]);
+    const phasePermutations = permutator([5,6,7,8,9]);
 
     let max = -1;
     let bestPermutation: number[] = undefined;
@@ -21,24 +22,44 @@ function main() {
     // Code here
     for (const permutation of phasePermutations) {
         try {
-            let amplifierInput = 0;
+            const interpreters: IntCodeInterpreter[] = new Array(5);
+
+            let result = -1;
+
             // Initilize IntCode machines and set phase setting
             for (let i = 0; i < 5; i++) {
                 const interpreter = new IntCodeInterpreter([...input]);
                 interpreter.addInput(permutation[i]);
-                interpreter.addInput(amplifierInput);
 
-                interpreter.addOutputListener(output => {
-                    amplifierInput = output;
-                    // interpreter.running = false;
-                });
-
-                interpreter.run();
+                if (i < 4) {
+                    interpreter.addOutputListener(output => interpreters[i + 1].addInput(output));
+                } else {
+                    interpreter.addOutputListener(output => {
+                        interpreters[0].addInput(output);
+                        result = output;
+                    });
+                }
+                interpreters[i] = interpreter;
             }
 
-            output.textContent += `[${permutation.join(", ")}]: ${amplifierInput}\r\n`;
-            if (amplifierInput > max) {
-                max = amplifierInput;
+            // initialize first amplifier
+            interpreters[0].addInput(0);
+
+            while (interpreters.some(i => !i.hasHalted)) {
+                for (const interpreter of interpreters) {
+                    if (!interpreter.hasHalted) {
+                        interpreter.step();
+                    }
+                }
+
+                if (interpreters.every(x => x.suspended)) {
+                    throw new Error("All interpreters are suspended!");
+                }
+            }
+
+            output.textContent += `[${permutation.join(", ")}]: ${result}\r\n`;
+            if (result > max) {
+                max = result;
                 bestPermutation = permutation;
             }
         } catch (e) {
