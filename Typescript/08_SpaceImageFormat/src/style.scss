@@ -1,0 +1,43 @@
+#output {
+    font-style: monospace;
+    border: 1px solid darkred;
+    padding: 5px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+
+.layer-container {
+    position: relative;
+}
+
+.layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    padding: 10px;
+
+    &:last-of-type {
+        background-color: black;
+    }
+}
+
+.val-0,
+.val-1,
+.val-2 {
+    color: transparent;
+    width: 10px;
+}
+
+.val-0 {
+    background-color: black;
+}
+
+.val-1 {
+    background-color: white;
+}
+
+.val-2 {
+    background-color: transparent;
+}
