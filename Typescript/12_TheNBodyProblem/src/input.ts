@@ -13,4 +13,4 @@ const main = `<x=-4, y=3, z=15>
 <x=2, y=2, z=18>
 <x=7, y=-1, z=0>`;
 
-export default b;
+export default main;

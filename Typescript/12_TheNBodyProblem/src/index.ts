@@ -29,6 +29,12 @@ class Moon {
 }
 
 function performStep(moons: Moon[]) {
+    performDimStep(moons, "x");
+    performDimStep(moons, "y");
+    performDimStep(moons, "z");
+}
+
+function performDimStep(moons: Moon[], dim: keyof Point) {
     // Apply gravity
     for (let i = 0; i < moons.length; i++) {
         for (let j = i + 1; j < moons.length; j++) {
@@ -36,35 +42,19 @@ function performStep(moons: Moon[]) {
             const moonB = moons[j];
             // console.log("Updating: ", [i, j]);
 
-            if (moonA.position.x > moonB.position.x) {
-                moonA.velocity.x -= 1;
-                moonB.velocity.x += 1;
-            } else if (moonA.position.x < moonB.position.x) {
-                moonA.velocity.x += 1;
-                moonB.velocity.x -= 1;
-            }
-            if (moonA.position.y > moonB.position.y) {
-                moonA.velocity.y -= 1;
-                moonB.velocity.y += 1;
-            } else if (moonA.position.y < moonB.position.y) {
-                moonA.velocity.y += 1;
-                moonB.velocity.y -= 1;
-            }
-            if (moonA.position.z > moonB.position.z) {
-                moonA.velocity.z -= 1;
-                moonB.velocity.z += 1;
-            } else if (moonA.position.z < moonB.position.z) {
-                moonA.velocity.z += 1;
-                moonB.velocity.z -= 1;
+            if (moonA.position[dim] > moonB.position[dim]) {
+                moonA.velocity[dim] -= 1;
+                moonB.velocity[dim] += 1;
+            } else if (moonA.position[dim] < moonB.position[dim]) {
+                moonA.velocity[dim] += 1;
+                moonB.velocity[dim] -= 1;
             }
         }
     }
 
     // Apply velocity
     for (const moon of moons) {
-        moon.position.x += moon.velocity.x;
-        moon.position.y += moon.velocity.y;
-        moon.position.z += moon.velocity.z;
+        moon.position[dim] += moon.velocity[dim];
     }
 }
 
@@ -99,28 +89,31 @@ function main() {
 
     // Code here
     output.textContent = "";
-    // let minPeriod: number[] = new Array(input.length).fill(-1); // minPeriod.some(x => x === -1)
-    for (let i = 0; i < 1000; i++) {
-        performStep(input);
+    let minPeriod = [-1n, -1n, -1n];
+    for (let dim = 0; dim < 3; dim++) {
+        const dimChar = String.fromCharCode("x".charCodeAt(0) + dim) as keyof Point;
 
-        // for (let a = 0; a < input.length; a++) {
-        //     if (input[a].velocity.x === 0 && input[a].velocity.y === 0 && input[a].velocity.z === 0 &&
-        //         input[a].position.x === initialState[a].position.x &&
-        //         input[a].position.y === initialState[a].position.y &&
-        //         input[a].position.z === initialState[a].position.z) {
-        //         if (minPeriod[a] === -1) {
-        //             console.log("Moon " + (a + 1) + " reached initial state after " + (i + 1) + " steps");
-        //             minPeriod[a] = i + 1;
-        //         }
-        //     }
-        // }
-        // output.textContent += printMoons(input);
-        // output.textContent += "\r\n\r\n";
+        let i;
+        for (i = 0; ; i++) {
+            performDimStep(input, dimChar);
+
+            if (input.every(moon => moon.velocity[dimChar] === 0)) {
+                if (_zip(input, initialState).every(([a, b]) => a.position[dimChar] === b.position[dimChar])) {
+                    break;
+                }
+            }
+        }
+
+        minPeriod[dim] = i + 1;
     }
-    console.log(minPeriod);
-    const totalEnergy = input.reduce((acc, val) =>  acc + (val.getKineticEnergy() * val.getPotentialEnergy()), 0);
-    output.textContent += "Total energy: " + totalEnergy;
-    // output.textContent += "It matches after: " + leastCommonMultiple(minPeriod) + " ticks!";
+    // for (let i = 0; i < 1000; i++) {
+    //     performStep(input);
+    //     // output.textContent += printMoons(input);
+    //     // output.textContent += "\r\n\r\n";
+    // }
+    // const totalEnergy = input.reduce((acc, val) => acc + (val.getKineticEnergy() * val.getPotentialEnergy()), 0);
+    // output.textContent += "Total energy: " + totalEnergy;
+    output.textContent += "It matches after: " + leastCommonMultiple(minPeriod) + " ticks!";
 }
 
 run.addEventListener("click", () => main());
