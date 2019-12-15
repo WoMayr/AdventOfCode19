@@ -1,0 +1,13 @@
+#output {
+    font-style: monospace;
+    border: 1px solid darkred;
+    padding: 5px;
+    border-radius: 10px;
+    display: inline-block;
+    white-space: pre;
+}
+
+#visualization,
+#output {
+    display: block;
+}
