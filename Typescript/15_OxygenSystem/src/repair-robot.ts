@@ -29,6 +29,9 @@ export class RepairRobot {
     public x = 0;
     public y = 0;
 
+    public unvisitedSpots = new Set<string>();
+    public visitedSpots = new Set<string>();
+
     constructor(private program: number[]) {
         this.logic = new IntCodeInterpreter(program);
 
@@ -37,6 +40,25 @@ export class RepairRobot {
 
     setBoard(x: number, y: number, tile: TileType) {
         const key = `${x}|${y}`;
+
+        if (!this.visitedSpots.has(key)) {
+            this.visitedSpots.add(key);
+            this.unvisitedSpots.delete(key);
+
+            if (tile !== TileType.Wall) {
+                const neighbours = [
+                    [x - 1, y],
+                    [x, y - 1],
+                    [x + 1, y],
+                    [x, y + 1]
+                ];
+                const unknownNeighbourTiles = neighbours
+                    .map(([nX, nY]) => `${nX}|${nY}`)
+                    .filter(k => !this.visitedSpots.has(k))
+                    .forEach(k => this.unvisitedSpots.add(k));
+            }
+        }
+
         this.board.set(key, tile);
     }
 
