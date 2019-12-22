@@ -1,0 +1,11 @@
+{
+    "compileOnSave": true,
+    "compilerOptions": {
+        "baseUrl": ".",
+        "outDir": "dist",
+        "target": "ESNext"
+    },
+    "include": [
+        "src/**/*.ts"
+    ]
+}
