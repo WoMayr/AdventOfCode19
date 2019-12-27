@@ -4,10 +4,8 @@ export type KeyState = [number, number, string, number];
 
 export interface DungeonState {
     takenSteps: number;
-    x: number;
-    y: number;
 
-    estimatedSteps?: number;
+    positions: [number, number][];
 
     collectedKeys: Set<string>;
 
@@ -20,8 +18,7 @@ export interface DungeonState {
 export function copyState(state: DungeonState): DungeonState {
     return {
         takenSteps: state.takenSteps,
-        x: state.x,
-        y: state.y,
+        positions: state.positions.map(x => [...x] as [number, number]),
 
         collectedKeys: new Set(state.collectedKeys),
 
@@ -29,13 +26,12 @@ export function copyState(state: DungeonState): DungeonState {
     }
 }
 
-export function createDerivateState(state: DungeonState, pathToTake: MemoizedPath): DungeonState {
+export function createDerivateState(state: DungeonState, robotToMove: number, pathToTake: MemoizedPath): DungeonState {
     const newState = copyState(state);
 
-    const [x, y] = pathToTake.to;
+    const to = pathToTake.to;
 
-    newState.x = x;
-    newState.y = y;
+    newState.positions[robotToMove] = [...to] as [number, number];
     newState.collectedKeys.add(pathToTake.key);
     newState.takenSteps = state.takenSteps + pathToTake.steps;
     newState.parentState = state;
