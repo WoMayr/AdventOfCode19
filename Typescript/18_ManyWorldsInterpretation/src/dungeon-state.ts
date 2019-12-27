@@ -1,3 +1,5 @@
+import { MemoizedPath } from "./memoized-path";
+
 export type KeyState = [number, number, string, number];
 
 export interface DungeonState {
@@ -8,8 +10,6 @@ export interface DungeonState {
     estimatedSteps?: number;
 
     collectedKeys: Set<string>;
-    reachableKeys: KeyState[];
-    reachableDoors: KeyState[];
 
     keysInOrder: string[];
 
@@ -24,24 +24,22 @@ export function copyState(state: DungeonState): DungeonState {
         y: state.y,
 
         collectedKeys: new Set(state.collectedKeys),
-        reachableKeys: [...state.reachableKeys],
-        reachableDoors: [...state.reachableDoors],
 
         keysInOrder: [...state.keysInOrder]
     }
 }
 
-export function createDerivateState(state: DungeonState, keyToCollect: string): DungeonState {
+export function createDerivateState(state: DungeonState, pathToTake: MemoizedPath): DungeonState {
     const newState = copyState(state);
 
-    const [x, y, key, steps] = newState.reachableKeys.find(([, , key]) => key === keyToCollect);
+    const [x, y] = pathToTake.to;
+
     newState.x = x;
     newState.y = y;
-    newState.collectedKeys.add(key);
-    newState.takenSteps = steps;
+    newState.collectedKeys.add(pathToTake.key);
+    newState.takenSteps = state.takenSteps + pathToTake.steps;
     newState.parentState = state;
-    newState.reachableKeys = [];
-    newState.keysInOrder.push(key);
+    newState.keysInOrder.push(pathToTake.key);
 
     return newState;
 }

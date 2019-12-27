@@ -1,6 +1,7 @@
 import { puzzle as rawInput } from "./input";
 import { output, run, visualization } from "./pageObjects";
 import { KeyState, DungeonState, createDerivateState } from "./dungeon-state";
+import { MemoizedPath } from "./memoized-path";
 
 const colorBoard = {
     ".": "white",
@@ -124,39 +125,118 @@ function timeout(delay = 0) {
     return new Promise(resolve => setTimeout(resolve, delay));
 }
 
-function fillState(board: string[][], state: DungeonState) {
-    let currentSteps = state.takenSteps;
+function getNextStates(board: string[][], poiPaths: MemoizedPath[], state: DungeonState) {
+    // let currentSteps = state.takenSteps;
+
+    // const openSpaces = new Set<string>();
+
+    // let toFlood = [
+    //     [state.x, state.y]
+    // ];
+    // while (toFlood.length > 0) {
+    //     const nextFlood = [];
+
+    //     while (toFlood.length > 0) {
+    //         const [x, y] = toFlood.shift();
+    //         const key = `${x}|${y}`;
+    //         const tile = board[y][x];
+    //         // stepsAway.set(key, currentSteps);
+    //         openSpaces.add(key);
+
+    //         if (isLowerCase(tile)) {
+    //             if (!state.collectedKeys.has(tile)) {
+    //                 state.reachableKeys.push([x, y, tile, currentSteps]);
+    //             }
+    //         } else if (isUpperCase(tile)) {
+    //             state.reachableDoors.push([x, y, tile, currentSteps]);
+    //         }
+
+    //         const neighbours = [
+    //             [x - 1, y],
+    //             [x, y - 1],
+    //             [x + 1, y],
+    //             [x, y + 1]
+    //         ].filter(([nX, nY]) =>
+    //             isWalkable(board, nX, nY, state.collectedKeys) &&
+    //             !openSpaces.has(`${nX}|${nY}`) &&
+    //             !nextFlood.some(([nX2, nY2]) => nX === nX2 && nY === nY2));
+    //         nextFlood.push(...neighbours);
+    //     }
+
+    //     toFlood = nextFlood;
+    //     currentSteps++;
+    // }
+
+    const nextPossiblePaths = poiPaths.filter(p => {
+        // Only use paths that start from our position
+        const [fromX, fromY] = p.from;
+        if (fromX !== state.x || fromY !== state.y) {
+            return false;
+        }
+
+        // We don't care about keys we already collected
+        if (state.collectedKeys.has(p.key)) {
+            return false;
+        }
+
+        // Ignore paths we cannot yet visit
+        if (p.requiredKeys.some(k => !state.collectedKeys.has(k))) {
+            return false;
+        }
+
+        return true;
+    });
+
+    state.nextStates = [];
+    for (const path of nextPossiblePaths) {
+        const newState = createDerivateState(state, path);
+        calculateEstimatedCost(newState, poiPaths);
+        state.nextStates.push(newState);
+    }
+}
+
+function caluclateAllPaths(board: string[][], startX: number, startY: number, breakOnFirstDoor = false): MemoizedPath[] {
+    let currentSteps = 0;
 
     const openSpaces = new Set<string>();
 
-    let toFlood = [
-        [state.x, state.y]
+    const result: MemoizedPath[] = [];
+
+    let toFlood: [number, number, string[]][] = [
+        [startX, startY, []]
     ];
     while (toFlood.length > 0) {
         const nextFlood = [];
 
         while (toFlood.length > 0) {
-            const [x, y] = toFlood.shift();
+            const [x, y, requiredKeys] = toFlood.shift();
             const key = `${x}|${y}`;
             const tile = board[y][x];
-            // stepsAway.set(key, currentSteps);
             openSpaces.add(key);
 
+            let keys = requiredKeys;
+            if (isUpperCase(tile)) {
+                keys = [...requiredKeys, tile.toLowerCase()];
+            }
+
             if (isLowerCase(tile)) {
-                if (!state.collectedKeys.has(tile)) {
-                    state.reachableKeys.push([x, y, tile, currentSteps]);
-                }
-            } else if (isUpperCase(tile)) {
-                state.reachableDoors.push([x, y, tile, currentSteps]);
+                result.push({
+                    from: [startX, startY],
+                    to: [x, y],
+                    key: tile,
+                    requiredKeys: keys,
+                    steps: currentSteps
+                });
+                keys = [...keys, tile];
             }
 
             const neighbours = [
-                [x - 1, y],
-                [x, y - 1],
-                [x + 1, y],
-                [x, y + 1]
+                [x - 1, y, keys],
+                [x, y - 1, keys],
+                [x + 1, y, keys],
+                [x, y + 1, keys]
             ].filter(([nX, nY]) =>
-                isWalkable(board, nX, nY, state.collectedKeys) &&
+                board[y][x] !== "#" &&
                 !openSpaces.has(`${nX}|${nY}`) &&
                 !nextFlood.some(([nX2, nY2]) => nX === nX2 && nY === nY2));
             nextFlood.push(...neighbours);
@@ -166,27 +246,53 @@ function fillState(board: string[][], state: DungeonState) {
         currentSteps++;
     }
 
-    state.nextStates = [];
-    for (const [, , key] of state.reachableKeys) {
-        const newState = createDerivateState(state, key);
-        calculateEstimatedCost(board, newState);
-        state.nextStates.push(newState);
-    }
+    return result;
 }
 
-function calculateEstimatedCost(board: string[][], state: DungeonState) {
+function calculatePaths(board: string[][]): MemoizedPath[] {
+    const pois: [number, number][] = [];
+
     const width = board[0].length;
     const height = board.length;
-    let estimation = state.takenSteps;
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const tile = board[y][x];
 
-            if (isLowerCase(tile) && !state.collectedKeys.has(tile)) {
-                estimation += Math.abs(state.x - x) + Math.abs(state.y - y);
+            if (isLowerCase(tile) || isUpperCase(tile)) {
+                pois.push([x, y]);
             }
         }
+    }
+
+    const [startX, startY] = findStartPoint(board);
+
+    const result: MemoizedPath[] = [
+        ...caluclateAllPaths(board, startX, startY, true)
+    ];
+    for (const [x, y] of pois) {
+        result.push(...caluclateAllPaths(board, x, y));
+    }
+
+    return result.filter(r => r.steps > 0);
+}
+
+function calculateEstimatedCost(state: DungeonState, poiPaths: MemoizedPath[]) {
+    let estimation = state.takenSteps;
+
+    const { x, y } = state;
+    for (const path of poiPaths) {
+        const [pX, pY] = path.from;
+
+        if (x !== pX || y !== pY) {
+            continue;
+        }
+
+        if (state.collectedKeys.has(path.key)) {
+            continue;
+        }
+
+        estimation += path.steps;
     }
 
     state.estimatedSteps = estimation;
@@ -227,6 +333,8 @@ async function main() {
     // Code here
     drawBoard(input); // , ["a"], new Set(["4|1"])
 
+    const poiPaths = calculatePaths(input);
+
     await timeout();
 
     const [startX, startY] = findStartPoint(input);
@@ -237,43 +345,58 @@ async function main() {
         y: startY,
         collectedKeys: new Set<string>(),
         takenSteps: 0,
-        reachableDoors: [],
-        reachableKeys: [],
         keysInOrder: []
     };
-    calculateEstimatedCost(input, rootState);
+    calculateEstimatedCost(rootState, poiPaths);
 
     const statesToProcess: DungeonState[] = [rootState];
     const processedState: DungeonState[] = [];
 
     let winState: DungeonState;
 
+    const similarStates = new Map<string, number>();
+
+    let i = 0;
     while (statesToProcess.length > 0) {
-        let minIdx = 0;
-        let min = statesToProcess[0];
-        for (let i = 1; i < statesToProcess.length; i++) {
-            const s = statesToProcess[i];
-            if (s.estimatedSteps < min.estimatedSteps) {
-                minIdx = i;
-                min = s;
-            }
-        }
-        const [state] = statesToProcess.splice(minIdx, 1);
+        // let minIdx = 0;
+        // let min = statesToProcess[0];
+        // for (let i = 1; i < statesToProcess.length; i++) {
+        //     const s = statesToProcess[i];
+        //     if (s.takenSteps < min.takenSteps) {
+        //         minIdx = i;
+        //         min = s;
+        //     }
+        // }
+        // const [state] = statesToProcess.splice(minIdx, 1);
+        const state = statesToProcess.shift();
 
         if (state.collectedKeys.size === keyCount) {
-            winState = state;
-            break;
+            if (!winState || state.takenSteps < winState.takenSteps) {
+                winState = state;
+                console.log("New best: " + winState.takenSteps, winState);
+            }
         }
 
-        fillState(input, state);
+        getNextStates(input, poiPaths, state);
         for (const nextState of state.nextStates) {
-            const similarState = processedState.find(s => setEqual(s.collectedKeys, nextState.collectedKeys));
-            if (!similarState || nextState.estimatedSteps < similarState.estimatedSteps) {
+            const keysString = [...nextState.keysInOrder].sort().join("");
+            const mapKey = `${nextState.x}|${nextState.y}` + keysString;
+            // const similarState = processedState.find(s => setEqual(s.collectedKeys, nextState.collectedKeys));
+            const similarState = similarStates.get(mapKey);
+            if (similarState === undefined || nextState.takenSteps < similarState) {
                 statesToProcess.push(nextState);
+                similarStates.set(mapKey, nextState.takenSteps);
             }
         }
 
         processedState.push(state);
+
+        i++;
+
+        // if (i % 100 === 0) {
+        //     output.textContent = `${i} / ${statesToProcess.length + processedState.length}`;
+        //     await timeout();
+        // }
     }
 
     output.textContent = "Steps: " + winState.takenSteps + " (" + winState.keysInOrder.join(", ") + ")";
