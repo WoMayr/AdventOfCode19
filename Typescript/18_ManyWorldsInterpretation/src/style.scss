@@ -1,0 +1,30 @@
+#output {
+    font-style: monospace;
+    border: 1px solid darkred;
+    padding: 5px;
+    border-radius: 10px;
+    display: inline-block;
+    white-space: pre;
+}
+
+#visualization,
+#output {
+    display: block;
+}
+
+#visualization {
+    text {
+        font-family: monospace;
+
+        &.key {
+            fill: black;
+        }
+        &.door {
+            fill: white;
+        }
+        &.collected {
+            fill: gray;
+        }
+
+    }
+}
